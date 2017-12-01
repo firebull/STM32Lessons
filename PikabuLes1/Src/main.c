@@ -65,7 +65,8 @@ osThreadId Led2Handle;
 osSemaphoreId ledOnSemHandle;
 
 /* USER CODE BEGIN PV */
-/* Private variables ---------------------------------------------------------*/
+RTC_TimeTypeDef rtcTime;
+RTC_DateTypeDef rtcDate;
 
 /* USER CODE END PV */
 
@@ -325,7 +326,8 @@ void StartDefaultTask(void const * argument) {
      * вещи, вроде инициальзации и сброса состояний,
      * опроса с равными промежутками и прочее.
      *
-     * Например, сейчас я сделал запуск задаи раз в секунду
+     * Например, сейчас я сделал запуск задачи раз в
+     * секунду, и запрашиваю текущее время и дату
      *****************/
 
     TickType_t xLastWakeTime;
@@ -334,7 +336,8 @@ void StartDefaultTask(void const * argument) {
 
     for (;;) {
         // Тут можно запускать какие-то действия
-
+        HAL_RTC_GetTime(&hrtc, &rtcTime, RTC_FORMAT_BCD);
+        HAL_RTC_GetDate(&hrtc, &rtcDate, RTC_FORMAT_BCD);
 
         // Благодаря этой функции, задача будет
         // уходить на новый круг в равные промежутки

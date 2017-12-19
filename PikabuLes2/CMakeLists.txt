@@ -1,0 +1,56 @@
+set(MCU_FAMILY STM32F3xx)
+
+cmake_minimum_required(VERSION 3.6)
+
+project(PikabuLes2 C ASM)
+
+add_definitions(-DSTM32F303xC)
+add_definitions(-DUSE_HAL_LIBRARY)
+
+set(STM32CUBEREPO /opt/libs/STM32Cube/Repository/STM32Cube_FW_F3_V1.9.0)
+
+set(USER_INCLUDE Inc)
+set(CMSIS_DEVICE_INCLUDE ${STM32CUBEREPO}/Drivers/CMSIS/Device/ST/STM32F3xx/Include)
+set(CMSIS_INCLUDE ${STM32CUBEREPO}/Drivers/CMSIS/Include)
+set(CMSIS_RTOS_INCLUDE ${STM32CUBEREPO}/Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS)
+set(HAL_INCLUDE ${STM32CUBEREPO}/Drivers/STM32F3xx_HAL_Driver/Inc)
+set(FREERTOS_INCLUDE ${STM32CUBEREPO}/Middlewares/Third_Party/FreeRTOS/Source/include)
+set(RVDS_INCLUDE ${STM32CUBEREPO}/Middlewares/Third_Party/FreeRTOS/Source/portable/RVDS/ARM_CM4F)
+
+
+file(GLOB_RECURSE USER_INCLUDE_F ${USER_INCLUDE}/*.h)
+file(GLOB_RECURSE CMSIS_DEVICE_INCLUDE_F ${CMSIS_DEVICE_INCLUDE}/*.h)
+file(GLOB_RECURSE CMSIS_INCLUDE_F ${CMSIS_INCLUDE}/*.h)
+file(GLOB_RECURSE HAL_INCLUDE_F ${HAL_INCLUDE}/*.h)
+
+file(GLOB_RECURSE USER_SOURCES Src/*.c)
+file(GLOB_RECURSE HAL_SOURCES ${STM32CUBEREPO}/Drivers/STM32F3xx_HAL_DRIVER/Src/*.c)
+file(GLOB_RECURSE CMSIS_SYSTEM ${STM32CUBEREPO}/Drivers/CMSIS/Device/ST/STM32F3xx/Source/Templates/system_STM32F3xx.c)
+file(GLOB_RECURSE CMSIS_STARTUP ${STM32CUBEREPO}/Drivers/CMSIS/Device/ST/STM32F3xx/Source/Templates/gcc/startup_STM32F303xC.s)
+
+set(SOURCE_FILES ${USER_SOURCES} ${HAL_SOURCES} ${CMSIS_SYSTEM} ${CMSIS_STARTUP} STM32F303VCTx_FLASH.ld
+                 ${USER_INCLUDE_F} ${CMSIS_DEVICE_INCLUDE_F} ${CMSIS_INCLUDE_F} ${HAL_INCLUDE_F})
+
+include_directories(${USER_INCLUDE} ${CMSIS_DEVICE_INCLUDE} ${CMSIS_INCLUDE} ${HAL_INCLUDE} ${CMSIS_RTOS_INCLUDE} ${FREERTOS_INCLUDE} ${RVDS_INCLUDE})
+
+add_executable(${PROJECT_NAME}.elf ${SOURCE_FILES})
+
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Map=${PROJECT_SOURCE_DIR}/build/${PROJECT_NAME}.map")
+set(HEX_FILE ${PROJECT_SOURCE_DIR}/build/${PROJECT_NAME}.hex)
+set(BIN_FILE ${PROJECT_SOURCE_DIR}/build/${PROJECT_NAME}.bin)
+
+add_custom_command(TARGET ${PROJECT_NAME}.elf PRE_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${PROJECT_SOURCE_DIR}/build
+        COMMENT "Creating build directory")
+add_custom_command(TARGET ${PROJECT_NAME}.elf POST_BUILD
+        COMMAND ${CMAKE_OBJCOPY} -Oihex $<TARGET_FILE:${PROJECT_NAME}.elf> ${HEX_FILE}
+        COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${PROJECT_NAME}.elf> ${BIN_FILE}
+        COMMENT "Building ${HEX_FILE}
+Building ${BIN_FILE}")
+
+add_custom_target(flash
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        COMMAND openocd -f openocd_flash.cfg
+        COMMENT "Flashing the target processor..."
+        DEPENDS ${PROJECT_NAME}.elf)
+add_custom_command(TARGET flash POST_BUILD COMMENT "Flashing finished!")
